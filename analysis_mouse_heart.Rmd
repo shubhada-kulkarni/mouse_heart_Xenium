@@ -377,6 +377,17 @@ list_DEs_ORAB2_MI <- lapply(list_DEs_ORAB2_MI, function(x) cbind("genes"=rowname
 write_xlsx(list_DEs_ORAB2_MI, path = paste0(output, "/DE_ORAB2-MI.xlsx"))
 ```
 
+# Cell-cycle scoring
+This analysis was unsuccessful because of overlap of S and G2M phase markers with our gene panel. 
+However, found out two overlapping gene candidates for G2M markers in our data and they have spatial patterns as well - Ube2c, Cenpf
+```{r}
+library(gprofiler2)
+mmus_s <- gorth(cc.genes.updated.2019$s.genes, source_organism = "hsapiens", target_organism = "mmusculus")$ortholog_name
+mmus_g2m <- gorth(cc.genes.updated.2019$g2m.genes, source_organism = "hsapiens", target_organism = "mmusculus")$ortholog_name
+xenium.obj.female_wt <- CellCycleScoring(xenium.obj.female_wt, s.features = mmus_s, g2m.features = mmus_g2m, set.ident = TRUE)
+```
+
+
 # Commented part 
 <!--```{r}
 female <- ReadXenium_new(data.dir = "/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/qupath_seg/outs/")
