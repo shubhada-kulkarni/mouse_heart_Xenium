@@ -387,6 +387,44 @@ mmus_g2m <- gorth(cc.genes.updated.2019$g2m.genes, source_organism = "hsapiens",
 xenium.obj.female_wt <- CellCycleScoring(xenium.obj.female_wt, s.features = mmus_s, g2m.features = mmus_g2m, set.ident = TRUE)
 ```
 
+# Cell-type changes in conditions
+For each celltype, check how many up and down genes are regulated in each condition. This will give an idea, how which celltype is most affected with the condition.
+```{r}
+list_genes_DE_per_condition <- list()
+condition_list <- list("MI"=list_DEs_MI, "ORAB1"=list_DEs_ORAB1, "ORAB2"=list_DEs_ORAB2,
+                       "ORAB1_MI"=list_DEs_ORAB1_MI, "ORAB2_MI"=list_DEs_ORAB2_MI)
+celltypes <- as.vector(unique(Idents(xenium.obj.female)))
+for (eachcell in celltypes){
+  if (eachcell == "ND"){
+    next
+  }
+  for (each_condition in names(condition_list)){
+    # adjust cellnames according to condition comparisons
+    
+    if (each_condition == "ORAB1_MI"){
+      data <- condition_list[[each_condition]][[paste0(eachcell, "_1")]]
+    } else if (each_condition == "ORAB2_MI"){
+      data <- condition_list[[each_condition]][[paste0(eachcell, "_2")]]
+    } else {
+      # for these comparisons, muscle contraction DEs do not exist. So skip
+      if (eachcell == "MuscleContraction") {
+        next
+      }
+      data <- condition_list[[each_condition]][[eachcell]]
+    }
+    # print(paste(eachcell, each_condition))
+    data <- data[abs(data$avg_log2FC) > 1 & data$p_val_adj < 0.05, ]
+    up_genes <- data$genes[data$avg_log2FC >= 0]
+    down_genes <- data$genes[data$avg_log2FC < 0]
+    list_genes_DE_per_condition[[paste(eachcell, each_condition, "UP", sep = "__")]] <- up_genes
+    list_genes_DE_per_condition[[paste(eachcell, each_condition, "DOWN", sep = "__")]] <- down_genes
+    print(paste(eachcell, each_condition, length(up_genes), length(down_genes)))
+  }
+}
+```
+
+
+
 
 # Commented part 
 <!--```{r}
