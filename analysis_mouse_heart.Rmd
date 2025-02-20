@@ -313,6 +313,70 @@ Plot the cell-type distribution per condition
 ggplot(df_celltype_distribution_table_melt, aes(x=Var1, y=value, fill=Var2)) + geom_bar(stat = "identity", position = "dodge")
 ```
 
+# Differential expression analysis per celltype between two conditions
+```{r}
+xenium.obj.female.de <- xenium.obj.female     # create separate Xenium object for 
+output <- "/prj/XeniumProbeDesign/mouse_heart_03012025/r_objects/"
+xenium.obj.female.de$celltype.condition <- paste(Idents(xenium.obj.female.de), xenium.obj.female.de$condition, sep="__")
+Idents(xenium.obj.female.de) <- "celltype.condition"
+
+list_DEs_MI <- list()
+list_DEs_ORAB1 <- list()
+list_DEs_ORAB2 <- list()
+list_DEs_ORAB1_MI <- list()
+list_DEs_ORAB2_MI <- list()
+for (i in as.vector(unique(xenium.obj.female$celltype))){ #or however many clusters you have
+  print(i)
+  if (i == "ND"){
+    next
+  }
+  ident1 <- paste0(i,"__WT")
+  ident2 <- paste0(i,"__MI")
+  ident3 <- paste0(i,"__ORAB1")
+  ident4 <- paste0(i,"__ORAB2")
+  try({
+    condition.diffgenes.mi_wt <- FindMarkers(xenium.obj.female.de, ident.1 = ident2, ident.2=ident1, min.pct=0.25, logfc.threshold=0.25) # condition versus control
+    list_DEs_MI[[i]] <- condition.diffgenes.mi_wt
+  })
+  
+  try({
+    condition.diffgenes.orab1_wt <- FindMarkers(xenium.obj.female.de, ident.1 = ident3, ident.2=ident1, min.pct=0.25, logfc.threshold=0.25) # condition versus control
+    list_DEs_ORAB1[[i]] <- condition.diffgenes.orab1_wt
+  })
+  
+  try({
+    condition.diffgenes.orab2_wt <- FindMarkers(xenium.obj.female.de, ident.1 = ident4, ident.2=ident1, min.pct=0.25, logfc.threshold=0.25) # condition versus control
+    list_DEs_ORAB2[[i]] <- condition.diffgenes.orab2_wt
+  })
+  
+    try({
+    condition.diffgenes.orab1_mi <- FindMarkers(xenium.obj.female.de, ident.1 = ident3, ident.2=ident2, min.pct=0.25, logfc.threshold=0.25) # ORAB versus MI
+    list_DEs_ORAB1_MI[[paste0(i,"_1")]] <- condition.diffgenes.orab1_mi
+  })
+  
+    try({
+    condition.diffgenes.orab2_mi <- FindMarkers(xenium.obj.female.de, ident.1 = ident4, ident.2=ident2, min.pct=0.25, logfc.threshold=0.25) # ORAB versus MI
+    list_DEs_ORAB2_MI[[paste0(i,"_2")]] <- condition.diffgenes.orab2_mi
+  })
+}
+```
+
+Write all DE results into files
+```{r}
+# write CSV
+library(writexl)
+list_DEs_MI <- lapply(list_DEs_MI, function(x) cbind("genes"=rownames(x), x))   # for xls writing add rownames
+write_xlsx(list_DEs_MI, path = paste0(output, "/DE_MI-WT.xlsx"))
+list_DEs_ORAB1 <- lapply(list_DEs_ORAB1, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB1, path = paste0(output, "/DE_ORAB1-WT.xlsx"))
+list_DEs_ORAB2 <- lapply(list_DEs_ORAB2, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB2, path = paste0(output, "/DE_ORAB2-WT.xlsx"))
+list_DEs_ORAB1_MI <- lapply(list_DEs_ORAB1_MI, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB1_MI, path = paste0(output, "/DE_ORAB1-MI.xlsx"))
+list_DEs_ORAB2_MI <- lapply(list_DEs_ORAB2_MI, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB2_MI, path = paste0(output, "/DE_ORAB2-MI.xlsx"))
+```
+
 # Commented part 
 <!--```{r}
 female <- ReadXenium_new(data.dir = "/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/qupath_seg/outs/")
