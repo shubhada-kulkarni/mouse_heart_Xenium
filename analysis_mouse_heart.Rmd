@@ -40,6 +40,11 @@ xenium.obj.female <- FindNeighbors(xenium.obj.female, reduction = "pca", dims = 
 xenium.obj.female <- FindClusters(xenium.obj.female, resolution = 0.5)
 ```
 
+Markers for all clusters
+```{r}
+markers_female <- FindAllMarkers(xenium.obj.female)
+```
+
 ### Cell cluster annotation
 cm - Ttn
 fibroblasts - Pdgfra (not found), 
@@ -386,6 +391,49 @@ mmus_s <- gorth(cc.genes.updated.2019$s.genes, source_organism = "hsapiens", tar
 mmus_g2m <- gorth(cc.genes.updated.2019$g2m.genes, source_organism = "hsapiens", target_organism = "mmusculus")$ortholog_name
 xenium.obj.female_wt <- CellCycleScoring(xenium.obj.female_wt, s.features = mmus_s, g2m.features = mmus_g2m, set.ident = TRUE)
 ```
+
+# Pathway enrichment per cluster for all conditions `xenium.obj.female`
+```{r}
+library(gprofiler2)
+list_pathways_celltype <- list()
+for (each_ident in unique(Idents(xenium.obj.female))){
+  print(each_ident)
+  if (each_ident == "ND"){
+    next
+  }
+  each_markers <- markers_female[markers_female$cluster == as.character(each_ident),]
+  each_markers <- each_markers[each_markers$p_val_adj < 0.05 & abs(each_markers$avg_log2FC) > 1,]
+  genes_up <- gsub("-FSJ", "", each_markers$gene[each_markers$avg_log2FC > 1])
+  genes_down <- gsub("-FSJ", "", each_markers$gene[each_markers$avg_log2FC < -1])
+  if (length(genes_up) > 0){
+    gostres <- gost(query = genes_up, organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", 
+                                                                                           "REAC", "WP"))
+    list_pathways_celltype[[paste0(each_ident, "__UP")]] <- gostres$result
+  }
+  if (length(genes_down) > 0){
+    gostres <- gost(query = genes_down, organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", 
+                                                                                           "REAC", "WP"))
+    list_pathways_celltype[[paste0(each_ident, "__DOWN")]] <- gostres$result
+  }
+}
+```
+
+Write output to excel
+```{r}
+write_xlsx(list_pathways_celltype, path = paste0(output, "/pathway_enrichmet_clusterlevel_allconditions.xlsx"))
+```
+
+
+
+```{r}
+library(gprofiler2)
+gostres <- gost(query = c("Thbs4", "C3", "Fibin"), organism = "mmusculus")
+View(gostres$result)
+
+#
+```
+
+
 
 # Cell-type changes in conditions
 For each celltype, check how many up and down genes are regulated in each condition. This will give an idea, how which celltype is most affected with the condition.
