@@ -428,7 +428,7 @@ write_xlsx(list_pathways_celltype, path = paste0(output, "/pathway_enrichmet_clu
 list_pathways_celltype_condition <- list()
 for (each_set in names(list_genes_DE_per_condition)){
   print(each_set)
-  gostres <- gost(query = list_genes_DE_per_condition[[each_set]], organism = "mmusculus")
+  gostres <- gost(query = list_genes_DE_per_condition[[each_set]], organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", "REAC", "WP"))
   list_pathways_celltype_condition[[each_set]] <- gostres$result
 }
 ```
