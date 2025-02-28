@@ -423,16 +423,20 @@ Write output to excel
 write_xlsx(list_pathways_celltype, path = paste0(output, "/pathway_enrichmet_clusterlevel_allconditions.xlsx"))
 ```
 
-
-
+# Pathway enrichment per cluster for differential condition analysis
 ```{r}
-library(gprofiler2)
-gostres <- gost(query = c("Thbs4", "C3", "Fibin"), organism = "mmusculus")
-View(gostres$result)
-
-#
+list_pathways_celltype_condition <- list()
+for (each_set in names(list_genes_DE_per_condition)){
+  print(each_set)
+  gostres <- gost(query = list_genes_DE_per_condition[[each_set]], organism = "mmusculus")
+  list_pathways_celltype_condition[[each_set]] <- gostres$result
+}
 ```
 
+Write output to excel
+```{r}
+write_xlsx(list_pathways_celltype_condition, path = paste0(output, "/pathway_enrichmet_clusterlevel_perconditions.xlsx"))
+```
 
 
 # Cell-type changes in conditions
