@@ -162,7 +162,7 @@ xenium.obj.female$celltype <- Idents(xenium.obj.female)
 
 # Cell-size statistics
 ```{r}
-cells_female_seg <- read.csv(gzfile("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/qupath_seg/outs/cells.csv.gz")) 
+cells_female_seg <- read.csv(gzfile("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/qupath_seg_mod//outs/cells.csv.gz")) 
 cells_female <- read.csv(gzfile("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/cells.csv.gz")) 
 # add 
 ```
