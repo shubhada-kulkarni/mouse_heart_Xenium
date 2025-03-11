@@ -174,7 +174,7 @@ colnames(female_clusters) <- c("celltype")
 female_clusters$cellid <- rownames(female_clusters)
 ```
 
-Add cluster information to cells area dataframe
+Add cluster information to cells area dataframe (This wont work after changing segmentation (qupath_mod))
 ```{r}
 cells_female_seg$celltype <- female_clusters$celltype[match(cells_female_seg$cell_id, female_clusters$cellid)]
 cells_female_seg$condition <- xenium.obj.female@meta.data$condition[match(cells_female_seg$cell_id, rownames(xenium.obj.female@meta.data))]
@@ -193,6 +193,22 @@ cells_female_seg_filtered <- cells_female_seg_filtered[cells_female_seg_filtered
 Plot the cell-size distribution
 ```{r}
 ggplot(cells_female_seg_filtered, aes(x=celltype, y=cell_area, color=condition)) + geom_boxplot() + ylim(0,2000)
+```
+
+Plot cell-size distribution before and after
+```{r}
+a <- data.frame(group = "a", value = cells_female_seg$cell_area)
+b <- data.frame(group = "b", value = cells_female$cell_area)
+plot.data <- rbind(a, b)
+
+# plot
+p <- ggplot(plot.data, aes(x=group, y=value, fill=group)) + scale_fill_viridis_d( option = "D")
+p <- p + geom_violin(alpha=0.4, position = position_dodge(width = .75),size=1,color="black")
+p <- p + geom_boxplot(notch = TRUE,  outlier.size = -1, color="black",lwd=1.2, alpha = 0.7)
+p <- p + theme_bw()
+p <- p + ylim(0,1000) + theme(legend.position = "none")
+p <- p + scale_x_discrete(labels=c("a" = "After", "b" = "Before")) + ylab("Cell area in µm²") + xlab("") + theme(text=element_text(size=16))
+
 ```
 
 # Expression of circular RNAs
