@@ -201,6 +201,8 @@ a <- data.frame(group = "a", value = cells_female_seg$cell_area)
 b <- data.frame(group = "b", value = cells_female$cell_area)
 plot.data <- rbind(a, b)
 
+plot.data$group <- factor(plot.data$group, levels = c("b", "a"))
+
 # plot
 p <- ggplot(plot.data, aes(x=group, y=value, fill=group)) + scale_fill_viridis_d( option = "D")
 p <- p + geom_violin(alpha=0.4, position = position_dodge(width = .75),size=1,color="black")
@@ -208,7 +210,6 @@ p <- p + geom_boxplot(notch = TRUE,  outlier.size = -1, color="black",lwd=1.2, a
 p <- p + theme_bw()
 p <- p + ylim(0,1000) + theme(legend.position = "none")
 p <- p + scale_x_discrete(labels=c("a" = "After", "b" = "Before")) + ylab("Cell area in µm²") + xlab("") + theme(text=element_text(size=16))
-
 ```
 
 # Expression of circular RNAs
