@@ -134,11 +134,18 @@ colnames(clusters) <- c("cell_id", "group")
 write.csv(clusters, "../r_objects/celltype_xenium_female.csv", quote = F, row.names = F)
 ```
 
+<!-- Remove ND from cluster list -->
+<!-- ```{r} -->
+<!-- unique_clusters <- unique(Idents(xenium.obj.female)) -->
+<!-- cluster_names <- unique_clusters[! unique_clusters %in% "ND"] -->
+<!-- Idents(xenium.obj.female) <- factor(Idents(xenium.obj.female), levels = cluster_names) -->
+<!-- ``` -->
 
 ## WT versus MI
 Assign cellIDs from above co-ordinate information
 ```{r}
 xenium.obj.female$condition <- cell_IDs_samples$condition[match(rownames(xenium.obj.female@meta.data), cell_IDs_samples$cellid)]
+xenium.obj.female$condition <- factor(xenium.obj.female$condition, levels = c("WT", "MI", "ORAB1", "ORAB2")) # rearranging the order
 ```
 
 Separate WT and MI objects
@@ -241,6 +248,7 @@ for (each_circle in circles){
   
   vec_mean_expr_circle <- c(vec_mean_expr_circle, mean(expr_circle))
   vec_mean_expr_linear <- c(vec_mean_expr_linear, mean(expr_linear))
+}
 ```
 
 # Niche analysis
