@@ -30,6 +30,11 @@ xenium.obj.female <- LoadXenium(data.dir = "/prj/XeniumProbeDesign/mouse_heart_0
 xenium.obj.female <- subset(xenium.obj.female, subset = nCount_Xenium > 0) # this filtering needs to be done or there is an error
 ```
 
+<!-- First filter and thenn clustering check -->
+<!-- ```{r} -->
+<!-- xenium.obj.female <- subset(xenium.obj.female, subset = nFeature_Xenium >= 25) -->
+<!-- ``` -->
+
 Process Seurat object
 ```{r}
 options(future.globals.maxSize = 8000 * 1024^2) # to avoid SCTrasnform getGlobalsAndPackages error
@@ -37,7 +42,7 @@ xenium.obj.female <- SCTransform(xenium.obj.female, assay = "Xenium")
 xenium.obj.female <- RunPCA(xenium.obj.female, npcs = 30, features = rownames(xenium.obj.female))
 xenium.obj.female <- RunUMAP(xenium.obj.female, dims = 1:30)
 xenium.obj.female <- FindNeighbors(xenium.obj.female, reduction = "pca", dims = 1:30)
-xenium.obj.female <- FindClusters(xenium.obj.female, resolution = 0.5)
+xenium.obj.female <- FindClusters(xenium.obj.female, resolution = 0.75)
 ```
 
 Markers for all clusters
@@ -67,34 +72,27 @@ Tcf15	Heart - endothelial cell of coronary artery
 Timp4	Heart - endothelial cell of coronary artery
 
 ### Marker genes analysis
-```{r}
-markers_wt <- FindAllMarkers(xenium.obj.female_wt)
-write.csv(markers_wt, file = "../r_objects/markers_WT_female.csv", quote = F)
-markers_mi <- FindAllMarkers(xenium.obj.female_mi)
-write.csv(markers_mi, file = "../r_objects/markers_MI_female.csv", quote = F)
-```
-
 Cardiomyocytes
 ```{r}
-VlnPlot(xenium.obj.female, c("Ttn"), pt.size = 0)
+VlnPlot(xenium.obj.female, c("Mylk3", "Trdn", "Hrc", "Myoz2"), pt.size = 0)
 ```
 
-Fibroblasts - 0, 5, 9
+Fibroblasts
 ```{r}
 FeaturePlot(xenium.obj.female, c("Dpt", "Lum"), label = T)
 ```
 
-Scahwann cells - 15
+Scahwann cells
 ```{r}
 FeaturePlot(xenium.obj.female, "Plp1", label = T)
 ```
 
-EC cells - Coronary artery EC cells - 2, 11 - using reverse engineering with Tabula Muris expression database
+EC cells - Coronary artery EC cells - using reverse engineering with Tabula Muris expression database
 ```{r}
-FeaturePlot(xenium.obj.female, c(""))
+FeaturePlot(xenium.obj.female, c("Aqp7", "Timp4"), label = T)
 ```
 
-Lymphatic ECs - 14
+Lymphatic ECs
 ```{r}
 FeaturePlot(xenium.obj.female, c("Lyve1"), label = T)
 ```
@@ -116,8 +114,9 @@ FeaturePlot(xenium.obj.female, c("Upk3b"), label = T)
 
 Rename clusters
 ```{r}
-new.cluster.ids <- c("Fibroblasts", "CMs", "ECs", "CMs", "Fibroblasts", "Fibroblasts", "Erythrocytes", "ECs", "Fibroblasts", "Fibroblasts", "Endocardial", 
-                     "ECs", "SMCs", "MuscleContraction", "LymphaticEC", "Neural", "Erythrocytes", "ND", "Epicardial", "Fibroblasts")
+new.cluster.ids <- c("ECs", "ECs", "CMs", "CMs", "Macrophage", "CMs", "Fibroblasts", "ECs", 
+                     "Pericytes", "Fibroblasts", "Macrophage2", "CMs", "Fibroblasts", "Endocardial", "SMCs",
+                     "Macrophage", "LymphaticEC", "MuscleContraction", "Neural", "Erythrocytes", "CMs", "ND", "Epicardial")
 names(new.cluster.ids) <- levels(xenium.obj.female)
 xenium.obj.female <- RenameIdents(xenium.obj.female, new.cluster.ids)
 ```
@@ -125,6 +124,11 @@ xenium.obj.female <- RenameIdents(xenium.obj.female, new.cluster.ids)
 Remove the cells that have low feature counts
 ```{r}
 xenium.obj.female <- subset(xenium.obj.female, subset = nFeature_Xenium >= 25)
+```
+
+Remove the ND cluster completely as it is mainly low count cells without any notifying markers
+```{r}
+xenium.obj.female <- subset(xenium.obj.female, idents = "ND", invert = T)
 ```
 
 Save the cell ID information to upload in Xenium Explorer
@@ -142,10 +146,25 @@ write.csv(clusters, "../r_objects/celltype_xenium_female.csv", quote = F, row.na
 <!-- ``` -->
 
 ## WT versus MI
+Find Markers
+```{r}
+markers_wt <- FindAllMarkers(xenium.obj.female_wt)
+write.csv(markers_wt, file = "../r_objects/markers_WT_female.csv", quote = F)
+markers_mi <- FindAllMarkers(xenium.obj.female_mi)
+write.csv(markers_mi, file = "../r_objects/markers_MI_female.csv", quote = F)
+```
+
 Assign cellIDs from above co-ordinate information
 ```{r}
 xenium.obj.female$condition <- cell_IDs_samples$condition[match(rownames(xenium.obj.female@meta.data), cell_IDs_samples$cellid)]
 xenium.obj.female$condition <- factor(xenium.obj.female$condition, levels = c("WT", "MI", "ORAB1", "ORAB2")) # rearranging the order
+```
+
+To highlight musclecontraction cluster spatially
+```{r}
+index <- which(Idents(xenium.obj.female_mi) == "MuscleContraction")
+cells_mc <- names(Idents(xenium.obj.female_mi)[index])
+ImageDimPlot(xenium.obj.female_mi, cells = cells_mc)
 ```
 
 Separate WT and MI objects
@@ -325,6 +344,23 @@ niche_female_orab2_abs_melt <- melt(niche_female_orab2_abs)
 ggplot(niche_female_orab2_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
 ```
 
+Plotting niches are barplots (SCC-HD presentation)
+The niche that drastically changes is niche 2 from MI i.e. niche 4 in ORAB1. 
+Plot the cellcular percentages for these two niches as barplots
+```{r}
+niche_bar_mi_orab <- data.frame(niche_female_mi_abs[,"2"], niche_female_orab1_abs[,"4"])
+colnames(niche_bar_mi_orab) <- c("MI", "ORAB1")
+niche_bar_mi_orab$celltype <- rownames(niche_bar_mi_orab)
+niche_bar_mi_orab_melt <- melt(niche_bar_mi_orab)
+
+niche_bar_mi_orab_melt <- niche_bar_mi_orab_melt[niche_bar_mi_orab_melt$celltype!="ND",]
+
+# barplot
+ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_bar(stat = "identity",position = "dodge") + theme_bw() +
+scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
+```
+
+
 # Cell composition analysis
 From cell annotations, see for each condition the %of cells present
 ```{r}
@@ -501,6 +537,20 @@ for (eachcell in celltypes){
 ```
 
 
+# Clustering of genes based on their expression in individual cell-type
+```{r}
+bulk_female <- as.data.frame(PseudobulkExpression(object = xenium.obj.female, layer = "data")$SCT)
+bulk_female$sum <- rowSums(bulk_female)
+# filter out low expressed genes in all clusters
+bulk_female <- bulk_female[bulk_female$sum >= 5,]
+bulk_female$sum <- NULL
+```
+
+Heatmap
+```{r}
+library(pheatmap)
+pheatmap(log2(bulk_female+1), angle_col = 315, fontsize_row = 7)
+```
 
 
 # Commented part 
