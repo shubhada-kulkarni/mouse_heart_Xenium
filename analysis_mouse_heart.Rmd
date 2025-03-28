@@ -196,7 +196,7 @@ write.csv(markers_mi, file = "../r_objects/markers_MI_female.csv", quote = F)
 markers_orab1 <- FindAllMarkers(xenium.obj.female_orab1)
 write.csv(markers_orab1, file = "../r_objects/markers_ORAB1_female.csv", quote = F)
 markers_orab2 <- FindAllMarkers(xenium.obj.female_orab2)
-write.csv(markers_orab1, file = "../r_objects/markers_ORAB2_female.csv", quote = F)
+write.csv(markers_orab2, file = "../r_objects/markers_ORAB2_female.csv", quote = F)
 ```
 
 Featureplots for WT and MI
