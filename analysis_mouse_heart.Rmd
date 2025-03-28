@@ -212,6 +212,15 @@ cells_mc <- names(Idents(xenium.obj.female_mi)[index])
 ImageDimPlot(xenium.obj.female_mi, cells = cells_mc)
 ```
 
+Image Dim Plots for each condition
+```{r}
+ImageDimPlot(xenium.obj.female_wt, dark.background = F, size = 1.5)
+ImageDimPlot(xenium.obj.female_mi, dark.background = F, size = 1.5)
+ImageDimPlot(xenium.obj.female_orab1, dark.background = F, size = 1.5)
+ImageDimPlot(xenium.obj.female_orab2, dark.background = F, size = 1.5)
+```
+
+
 # Cell-size statistics
 ```{r}
 cells_female_seg <- read.csv(gzfile("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/qupath_seg_mod//outs/cells.csv.gz")) 
