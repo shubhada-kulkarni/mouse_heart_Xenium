@@ -456,7 +456,7 @@ df_celltype_distribution_table_melt$Var2 <- factor(df_celltype_distribution_tabl
 
 Plot the cell-type distribution per condition
 ```{r}
-ggplot(df_celltype_distribution_table_melt, aes(x=Var1, y=value, fill=Var2)) + geom_bar(stat = "identity", position = "dodge")
+ggplot(df_celltype_distribution_table_melt, aes(x=Var1, y=value, fill=Var2)) + geom_bar(stat = "identity", position = "dodge") + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45)) + ylab("Population percentage") + xlab("Cell-types")
 ```
 
 # Differential expression analysis per celltype between two conditions
