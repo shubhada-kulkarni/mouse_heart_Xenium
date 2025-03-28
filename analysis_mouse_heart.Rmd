@@ -72,45 +72,67 @@ Tcf15	Heart - endothelial cell of coronary artery
 Timp4	Heart - endothelial cell of coronary artery
 
 ### Marker genes analysis
+Color pallet for featureplots
+```{r}
+scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 1, name = "YlGnBu")))
+```
+
 Cardiomyocytes
 ```{r}
-VlnPlot(xenium.obj.female, c("Mylk3", "Trdn", "Hrc", "Myoz2"), pt.size = 0)
+FeaturePlot(xenium.obj.female, c("Mylk3", "Trdn", "Hrc", "Myoz2"), label = T)
+FeaturePlot(xenium.obj.female, c("Tnnc1", "Tnnt2-FSJ1"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 Fibroblasts
 ```{r}
-FeaturePlot(xenium.obj.female, c("Dpt", "Lum"), label = T)
+FeaturePlot(xenium.obj.female, c("Dpt", "Lum"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 Scahwann cells
 ```{r}
-FeaturePlot(xenium.obj.female, "Plp1", label = T)
+FeaturePlot(xenium.obj.female, "Plp1", label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 EC cells - Coronary artery EC cells - using reverse engineering with Tabula Muris expression database
 ```{r}
-FeaturePlot(xenium.obj.female, c("Aqp7", "Timp4"), label = T)
+FeaturePlot(xenium.obj.female, c("Aqp7", "Timp4"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 Lymphatic ECs
 ```{r}
-FeaturePlot(xenium.obj.female, c("Lyve1"), label = T)
+FeaturePlot(xenium.obj.female, c("Lyve1"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 Erythrocytes & pericytes - reverse engineering
 ```{r}
-FeaturePlot(xenium.obj.female, c("Higd1b", "Rsad2"), label = T)
+FeaturePlot(xenium.obj.female, c("Higd1b", "Rsad2"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 Endocardial
 ```{r}
-FeaturePlot(xenium.obj.female, c("Vwf", "Plvap"), label = T)
+FeaturePlot(xenium.obj.female, c("Vwf", "Plvap"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
 
 Epicardium
 ```{r}
-FeaturePlot(xenium.obj.female, c("Upk3b"), label = T)
+FeaturePlot(xenium.obj.female, c("Upk3b"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
 ```
+
+Macrophages
+```{r}
+FeaturePlot(xenium.obj.female, c("Upk3b"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
 
 Rename clusters
 ```{r}
@@ -135,7 +157,7 @@ Save the cell ID information to upload in Xenium Explorer
 ```{r}
 clusters <- data.frame(names(Idents(xenium.obj.female)), as.vector(Idents(xenium.obj.female)))
 colnames(clusters) <- c("cell_id", "group")
-write.csv(clusters, "../r_objects/celltype_xenium_female.csv", quote = F, row.names = F)
+write.csv(clusters, "../r_objects/celltype_xenium_female_new.csv", quote = F, row.names = F)
 ```
 
 <!-- Remove ND from cluster list -->
@@ -146,12 +168,9 @@ write.csv(clusters, "../r_objects/celltype_xenium_female.csv", quote = F, row.na
 <!-- ``` -->
 
 ## WT versus MI
-Find Markers
+Read `cell_IDs_samples` object from previous RDS saved data because it takes long time to run this.
 ```{r}
-markers_wt <- FindAllMarkers(xenium.obj.female_wt)
-write.csv(markers_wt, file = "../r_objects/markers_WT_female.csv", quote = F)
-markers_mi <- FindAllMarkers(xenium.obj.female_mi)
-write.csv(markers_mi, file = "../r_objects/markers_MI_female.csv", quote = F)
+cell_IDs_samples <- readRDS("../r_objects/cell_IDs_samples.rds")
 ```
 
 Assign cellIDs from above co-ordinate information
@@ -160,19 +179,20 @@ xenium.obj.female$condition <- cell_IDs_samples$condition[match(rownames(xenium.
 xenium.obj.female$condition <- factor(xenium.obj.female$condition, levels = c("WT", "MI", "ORAB1", "ORAB2")) # rearranging the order
 ```
 
-To highlight musclecontraction cluster spatially
-```{r}
-index <- which(Idents(xenium.obj.female_mi) == "MuscleContraction")
-cells_mc <- names(Idents(xenium.obj.female_mi)[index])
-ImageDimPlot(xenium.obj.female_mi, cells = cells_mc)
-```
-
 Separate WT and MI objects
 ```{r}
 xenium.obj.female_wt <- subset(xenium.obj.female, subset =  `condition` == "WT")
 xenium.obj.female_mi <- subset(xenium.obj.female, subset =  `condition` == "MI")
 xenium.obj.female_orab1 <- subset(xenium.obj.female, subset =  `condition` == "ORAB1")
 xenium.obj.female_orab2 <- subset(xenium.obj.female, subset =  `condition` == "ORAB2")
+```
+
+Find Markers
+```{r}
+markers_wt <- FindAllMarkers(xenium.obj.female_wt)
+write.csv(markers_wt, file = "../r_objects/markers_WT_female.csv", quote = F)
+markers_mi <- FindAllMarkers(xenium.obj.female_mi)
+write.csv(markers_mi, file = "../r_objects/markers_MI_female.csv", quote = F)
 ```
 
 Featureplots for WT and MI
@@ -185,6 +205,12 @@ Add celltype as a variable
 xenium.obj.female$celltype <- Idents(xenium.obj.female)
 ```
 
+To highlight musclecontraction cluster spatially (added for presentation SCC-HD)
+```{r}
+index <- which(Idents(xenium.obj.female_mi) == "MuscleContraction")
+cells_mc <- names(Idents(xenium.obj.female_mi)[index])
+ImageDimPlot(xenium.obj.female_mi, cells = cells_mc)
+```
 
 # Cell-size statistics
 ```{r}
