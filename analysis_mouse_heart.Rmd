@@ -315,7 +315,7 @@ Create a new object with niches
 ```{r}
 xenium.obj.female_wt_niche <- xenium.obj.female_wt
 xenium.obj.female_wt_niche$celltype <- as.vector(Idents(xenium.obj.female_wt_niche))
-xenium.obj.female_wt_niche <- BuildNicheAssay(object = xenium.obj.female_wt_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+xenium.obj.female_wt_niche <- BuildNicheAssay(object = xenium.obj.female_wt_niche, group.by = "celltype", niches.k = 3, neighbors.k = 25, fov = "fov")
 ImageDimPlot(xenium.obj.female_wt_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
 ```
 
@@ -329,11 +329,17 @@ niche_female_wt_abs_melt <- melt(niche_female_wt_abs)
 ggplot(niche_female_wt_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
 ```
 
+All graphics together for the wild-type
+```{r}
+ImageDimPlot(xenium.obj.female_wt_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches") | ggplot(niche_female_wt_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black")  + theme(legend.position="none")  + xlab("niches") | ggplot(niche_female_wt_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") + xlab("niches") 
+```
+
+
 ### MI
 ```{r}
 xenium.obj.female_mi_niche <- xenium.obj.female_mi
 xenium.obj.female_mi_niche$celltype <- as.vector(Idents(xenium.obj.female_mi_niche))
-xenium.obj.female_mi_niche <- BuildNicheAssay(object = xenium.obj.female_mi_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+xenium.obj.female_mi_niche <- BuildNicheAssay(object = xenium.obj.female_mi_niche, group.by = "celltype", niches.k = 3, neighbors.k = 25, fov = "fov")
 ImageDimPlot(xenium.obj.female_mi_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
 ```
 
@@ -347,11 +353,16 @@ niche_female_mi_abs_melt <- melt(niche_female_mi_abs)
 ggplot(niche_female_mi_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
 ```
 
+All graphics together for the MI heart
+```{r}
+ImageDimPlot(xenium.obj.female_mi_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches") | ggplot(niche_female_mi_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black")  + theme(legend.position="none")  + xlab("niches") | ggplot(niche_female_mi_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") + xlab("niches") 
+```
+
 ### ORAB1
 ```{r}
 xenium.obj.female_orab1_niche <- xenium.obj.female_orab1
 xenium.obj.female_orab1_niche$celltype <- as.vector(Idents(xenium.obj.female_orab1_niche))
-xenium.obj.female_orab1_niche <- BuildNicheAssay(object = xenium.obj.female_orab1_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+xenium.obj.female_orab1_niche <- BuildNicheAssay(object = xenium.obj.female_orab1_niche, group.by = "celltype", niches.k = 3, neighbors.k = 25, fov = "fov")
 ImageDimPlot(xenium.obj.female_orab1_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
 ```
 
@@ -365,11 +376,16 @@ niche_female_orab1_abs_melt <- melt(niche_female_orab1_abs)
 ggplot(niche_female_orab1_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
 ```
 
+All graphics together for the ORAB1 heart
+```{r}
+ImageDimPlot(xenium.obj.female_orab1_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches") | ggplot(niche_female_orab1_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black")  + theme(legend.position="none")  + xlab("niches") | ggplot(niche_female_orab1_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") + xlab("niches") 
+```
+
 ### ORAB2
 ```{r}
 xenium.obj.female_orab2_niche <- xenium.obj.female_orab2
 xenium.obj.female_orab2_niche$celltype <- as.vector(Idents(xenium.obj.female_orab2_niche))
-xenium.obj.female_orab2_niche <- BuildNicheAssay(object = xenium.obj.female_orab2_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+xenium.obj.female_orab2_niche <- BuildNicheAssay(object = xenium.obj.female_orab2_niche, group.by = "celltype", niches.k = 3, neighbors.k = 25, fov = "fov")
 ImageDimPlot(xenium.obj.female_orab2_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
 ```
 
@@ -382,6 +398,12 @@ niche_female_orab2_abs <- sweep(niche_female_orab2, 2, colSums(niche_female_orab
 niche_female_orab2_abs_melt <- melt(niche_female_orab2_abs)
 ggplot(niche_female_orab2_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
 ```
+
+All graphics together for the ORAB2 heart
+```{r}
+ImageDimPlot(xenium.obj.female_orab2_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches") | ggplot(niche_female_orab2_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black")  + theme(legend.position="none")  + xlab("niches") | ggplot(niche_female_orab2_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") + xlab("niches") 
+```
+
 
 Niche spatial plot and distribution plot side-by-side
 ```{r}
@@ -411,11 +433,11 @@ ImageDimPlot(xenium.obj.female_mi_niche, group.by = "niches", size = 1.5, dark.b
 ```
 
 
-Plotting niches are barplots (SCC-HD presentation)
+Plotting niches as barplots (SCC-HD presentation)
  
-Plot the cellular percentages for these two infarction niches as barplots i.e. niche 1 in MI and niche 4 in ORAB1
+Plot the cellular percentages for these two infarction niches as barplots i.e. niche 2 in MI and niche 2 in ORAB1
 ```{r}
-niche_bar_mi_orab <- data.frame(niche_female_mi_abs[,"1"], niche_female_orab1_abs[,"4"])
+niche_bar_mi_orab <- data.frame(niche_female_mi_abs[,"2"], niche_female_orab1_abs[,"2"])
 colnames(niche_bar_mi_orab) <- c("MI", "ORAB1")
 niche_bar_mi_orab$celltype <- rownames(niche_bar_mi_orab)
 niche_bar_mi_orab_melt <- melt(niche_bar_mi_orab)
@@ -427,9 +449,9 @@ ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_b
 scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
 ```
 
-Similarly check for infarction neighbor niche i.e. niche 2 in MI and niche 3 in ORAB1
+Similarly check for infarction neighbor border zone i.e. niche 3 in MI and niche 1 in ORAB1
 ```{r}
-niche_bar_mi_orab <- data.frame(niche_female_mi_abs[,"2"], niche_female_orab1_abs[,"3"])
+niche_bar_mi_orab <- data.frame(niche_female_mi_abs[,"3"], niche_female_orab1_abs[,"1"])
 colnames(niche_bar_mi_orab) <- c("MI", "ORAB1")
 niche_bar_mi_orab$celltype <- rownames(niche_bar_mi_orab)
 niche_bar_mi_orab_melt <- melt(niche_bar_mi_orab)
@@ -630,6 +652,28 @@ Heatmap
 ```{r}
 library(pheatmap)
 pheatmap(log2(bulk_female+1), angle_col = 315, fontsize_row = 7)
+```
+
+# Differential expression analysis between niches
+Perform differential expression analysis between niches to identify genes specific for each niche
+```{r}
+# MI
+de_niches_mi <- FindAllMarkers(xenium.obj.female_mi_niche, assay = "SCT", group.by = "niches")
+de_niches_mi_filt <- de_niches_mi[de_niches_mi$p_val_adj < 0.05 & abs(de_niches_mi$avg_log2FC) > 1 ,]
+# ORAB1
+de_niches_orab1 <- FindAllMarkers(xenium.obj.female_orab1_niche, assay = "SCT", group.by = "niches")
+de_niches_orab1_filt <- de_niches_orab1[de_niches_orab1$p_val_adj < 0.05 & abs(de_niches_orab1$avg_log2FC) > 1 ,]
+# ORAB2
+de_niches_orab2 <- FindAllMarkers(xenium.obj.female_orab2_niche, assay = "SCT", group.by = "niches")
+de_niches_orab2_filt <- de_niches_orab2[de_niches_orab2$p_val_adj < 0.05 & abs(de_niches_orab2$avg_log2FC) > 1 ,]
+```
+
+Write DE genes into excel sheet
+```{r}
+list_de_niches <- list(de_niches_mi_filt, de_niches_orab1_filt, de_niches_orab2_filt)
+names(list_de_niches) <- c("MI", "ORAB1", "ORAB2")
+list_de_niches <- lapply(list_de_niches, function(x) cbind("genes"=rownames(x), x))   # for xls writing add rownames
+write_xlsx(list_de_niches, path = paste0(output, "/niche_DE_genes.xlsx"))
 ```
 
 
