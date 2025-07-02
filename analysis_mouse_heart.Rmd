@@ -310,33 +310,6 @@ for (each_circle in circles){
 ```
 
 # Niche analysis
-### All conditions combined
-```{r}
-xenium.obj.female_niche <- xenium.obj.female
-xenium.obj.female_niche$celltype <- as.vector(Idents(xenium.obj.female_niche))
-xenium.obj.female_niche <- BuildNicheAssay(object = xenium.obj.female_niche, group.by = "celltype", niches.k = 3, neighbors.k = 25, fov = "fov")
-ImageDimPlot(xenium.obj.female_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
-```
-
-Find all genes that are different in each niche per celltype
-```{r}
-DefaultAssay(xenium.obj.female_niche) <- "SCT"
-Idents(xenium.obj.female_niche) <-  xenium.obj.female_niche$niches
-xenium.obj.female_niche$niche.condition <- paste(Idents(xenium.obj.female_niche), xenium.obj.female_niche$condition, sep="_")
-# xenium.obj.female_niche$celltype <- Idents(xenium.obj.female_niche)
-Idents(xenium.obj.female_niche) <- "niche.condition"
-condition.diffgenes <- list()
-for (i in 1:3){ #or however many clusters you have
-  try({
-    print(i)
-    ident1 <- paste0(i,"_MI")
-    ident2 <- paste0(i,"_ORAB1")
-    condition.diffgenes[[i]] <- FindMarkers(xenium.obj.female_niche, ident.1 = ident1, ident.2=ident2)
-    # write.csv(condition.diffgenes, file=paste0(output,i,".csv"))
-  })
-}
-```
-
 Create a new object with niches
 ### WT
 ```{r}
@@ -502,6 +475,42 @@ niche_bar_mi_orab_melt <- niche_bar_mi_orab_melt[niche_bar_mi_orab_melt$celltype
 # barplot
 ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_bar(stat = "identity",position = "dodge") + theme_bw() +
 scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
+```
+
+### All conditions combined (for DE analysis per niche in between different conditions)
+```{r}
+xenium.obj.female_niche <- xenium.obj.female
+xenium.obj.female_niche$celltype <- as.vector(Idents(xenium.obj.female_niche))
+xenium.obj.female_niche <- BuildNicheAssay(object = xenium.obj.female_niche, group.by = "celltype", niches.k = 3, neighbors.k = 25, fov = "fov")
+# ImageDimPlot(xenium.obj.female_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
+```
+
+Combine niches for each cell identified from different conditions SEPARATELY. Because combined information does not look accurate.
+```{r}
+list_niche_info_per_celltype <- list("wt" = data.frame(cell = rownames(xenium.obj.female_wt_niche@meta.data), zones = xenium.obj.female_wt_niche$zones), "mi" = data.frame(cell = rownames(xenium.obj.female_mi_niche@meta.data), zones = xenium.obj.female_mi_niche$zones), "orab1" = data.frame(cell = rownames(xenium.obj.female_orab1_niche@meta.data), zones = xenium.obj.female_orab1_niche$zones), "orab2" = data.frame(cell = rownames(xenium.obj.female_orab2_niche@meta.data), zones = xenium.obj.female_orab2_niche$zones))
+  
+niche_info_per_celltype <- do.call(rbind.data.frame, list_niche_info_per_celltype)
+```
+
+Find all genes that are different in each niche per celltype
+```{r}
+DefaultAssay(xenium.obj.female_niche) <- "SCT"
+xenium.obj.female_niche$zones <- niche_info_per_celltype$zones[match(rownames(xenium.obj.female_niche@meta.data), niche_info_per_celltype$cell)] 
+Idents(xenium.obj.female_niche) <-  xenium.obj.female_niche$zones
+xenium.obj.female_niche$niche.condition <- paste(Idents(xenium.obj.female_niche), xenium.obj.female_niche$condition, sep="_")
+Idents(xenium.obj.female_niche) <- "niche.condition"
+condition.diffgenes <- list()
+for (i in c("remote", "border", "infarction")){
+  try({
+    print(i)
+    ident1 <- paste0(i,"_MI")
+    ident2 <- paste0(i,"_ORAB1")
+    condition.diffgenes[[i]] <- FindMarkers(xenium.obj.female_niche, ident.1 = ident1, ident.2=ident2)
+  })
+}
+
+condition.diffgenes <- lapply(condition.diffgenes, function(x) cbind("genes"=rownames(x), x))   # for xls writing add rownames
+write_xlsx(condition.diffgenes, path = paste0(output, "/DE_MIvsORAB1_perzone.xlsx"))
 ```
 
 # Cell composition analysis
