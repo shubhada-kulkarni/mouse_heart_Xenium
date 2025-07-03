@@ -1,0 +1,673 @@
+---
+title: "mouse_heart_analysis"
+output: html_document
+date: "2025-01-22"
+---
+
+# Load required libraries
+```{r}
+library(Seurat)
+library(SeuratObject)
+library(arrow)
+library(ggplot2)
+```
+
+# male slide
+## Segmentation check
+To check if the segmentation worked fine or not
+```{r}
+transcripts_seg <- arrow::read_parquet(file.path("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046390__Region_1__20241219__110828/qupath_seg_mod/outs/", "transcripts.parquet"))
+transcripts_seg_qv <- transcripts_seg[transcripts_seg$qv >= 20,]
+transcripts_seg_qv_assigned <- transcripts_seg_qv[transcripts_seg_qv$cell_id != "UNASSIGNED",]
+nrow(transcripts_seg_qv_assigned)/nrow(transcripts_seg_qv)
+```
+
+## cell ID per condition
+With mouse data, all four regions from four conditions were placed on the same slide. This means, you will have to find out the coordinates for each region and subset the data. This was done using script `separate_regions_slide_male.R`
+```{r}
+centroids <- arrow::read_parquet(file.path("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046390__Region_1__20241219__110828/qupath_seg_mod/outs/", "cells.parquet"))
+centroids_df <- data.frame(centroids$cell_id, centroids$x_centroid, centroids$y_centroid)
+colnames(centroids_df) <- c("cell", "x", "y")
+# wild-type cell-id extraction
+cell_IDs_samples_male <- data.frame(NULL)
+count <- 1
+cellids <- c()
+for (i in 1:nrow(centroids_df)){
+  # WT
+  if ( (centroids_df[i,"x"] > 600) & (centroids_df[i,"x"] < 5320) &
+       (centroids_df[i,"y"] > 450) & (centroids_df[i,"y"] < 5350)){
+    print(paste("This is wild-type sample", centroids_df[i,"x"], centroids_df[i,"y"], centroids_df[i,"cell"]))
+    cell_IDs_samples_male[i,1:2] <-  c(centroids_df[i,"cell"], "WT")
+    count <- count + 1
+    #cellids_wt <- c(cellids_wt, centroids_df[i,"cell"])
+  }
+  # MI
+  else if ( (centroids_df[i,"x"] > 5350) & (centroids_df[i,"x"] < 11500) &
+            (centroids_df[i,"y"] > 5650) & (centroids_df[i,"y"] < 10500)){
+    print(paste("This is MI sample", centroids_df[i,"x"], centroids_df[i,"y"], centroids_df[i,"cell"]))
+    cell_IDs_samples_male[i,1:2] <-  c(centroids_df[i,"cell"], "MI")
+    count <- count + 1
+    #cellids_wt <- c(cellids_wt, centroids_df[i,"cell"])
+  }
+  # ORAB1
+  else if ( (centroids_df[i,"x"] > 0) & (centroids_df[i,"x"] < 6100) &
+            (centroids_df[i,"y"] > 8700) & (centroids_df[i,"y"] < 15600)){
+    print(paste("This is ORAB1 sample", centroids_df[i,"x"], centroids_df[i,"y"], centroids_df[i,"cell"]))
+    cell_IDs_samples_male[i,1:2] <-  c(centroids_df[i,"cell"], "ORAB1")
+    count <- count + 1
+    #cellids_wt <- c(cellids_wt, centroids_df[i,"cell"])
+  }
+    # ORAB2
+  else if ( (centroids_df[i,"x"] > 4400) & (centroids_df[i,"x"] < 10100) &
+            (centroids_df[i,"y"] > 13700) & (centroids_df[i,"y"] < 19000)){
+    print(paste("This is ORAB2 sample", centroids_df[i,"x"], centroids_df[i,"y"], centroids_df[i,"cell"]))
+    cell_IDs_samples_male[i,1:2] <-  c(centroids_df[i,"cell"], "ORAB2")
+    count <- count + 1
+    #cellids_wt <- c(cellids_wt, centroids_df[i,"cell"])
+  }
+  else {
+    cell_IDs_samples_male[i,1:2] <-  c(centroids_df[i,"cell"], "ND")
+    count <- count + 1
+  }
+}
+colnames(cell_IDs_samples_male) <- c("cellid", "sample")
+print(table(cell_IDs_samples_male))
+colnames(cell_IDs_samples_male) <- c("cellid", "condition")
+cell_IDs_samples_male <- cell_IDs_samples_male[!is.na(cell_IDs_samples_male$cellid),]
+```
+
+## Read the data
+Read the Xenium data
+```{r}
+xenium.obj.male <- LoadXenium(data.dir = "/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046390__Region_1__20241219__110828/qupath_seg_mod/outs/")
+# filter to avoid SCtransform error
+xenium.obj.male <- subset(xenium.obj.male, subset = nCount_Xenium > 50) # this filtering needs to be done or there is an error
+```
+
+Process Seurat object
+```{r}
+options(future.globals.maxSize = 8000 * 1024^2) # to avoid SCTrasnform getGlobalsAndPackages error
+xenium.obj.male <- SCTransform(xenium.obj.male, assay = "Xenium")
+xenium.obj.male <- RunPCA(xenium.obj.male, npcs = 30, features = rownames(xenium.obj.male))
+xenium.obj.male <- RunUMAP(xenium.obj.male, dims = 1:30)
+xenium.obj.male <- FindNeighbors(xenium.obj.male, reduction = "pca", dims = 1:30)
+xenium.obj.male <- FindClusters(xenium.obj.male, resolution = 0.5)
+```
+
+Markers for all clusters
+```{r}
+markers_male <- FindAllMarkers(xenium.obj.male)
+```
+
+### Cell cluster annotation
+cm - Ttn
+fibroblasts - Pdgfra (not found), 
+EC - Pecam1 (not found)
+Macro - F13a1 (3,4), Adgre1 (not found)
+pericytes - Pdgfrb (not found)
+SMC - Acta2 (not found), Myh11 (part of 5)
+Endocardium - Npr3, Tmem108
+Epicardium - Muc16, Pcdh15
+Schwann - Plp1 (cluster 7)
+# from reference panel excel sheet
+Aqp7, Cd36	Heart - endothelial cell of coronary artery
+Ccdc80	Heart - fibroblast of cardiac tissue,Trachea - fibroblast (cluster 3&6)
+Chl1	Heart - cardiac neuron (everywhere but darker in one cluster)
+Comp	Heart - endocardial cell (small part)
+Cstdc4	Heart - mast cell,Skin of Body - basal cell of epidermis (not present)
+Eng	Heart - endocardial cell,Limb Muscle - mesenchymal stem cell
+Hrc	Heart - cardiac muscle cell
+Tcf15	Heart - endothelial cell of coronary artery
+Timp4	Heart - endothelial cell of coronary artery
+
+### Marker genes analysis
+<!-- Color pallet for featureplots -->
+<!-- ```{r} -->
+<!-- scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) & -->
+<!--   theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 1, name = "YlGnBu"))) -->
+<!-- ``` -->
+
+Cardiomyocytes
+```{r}
+FeaturePlot(xenium.obj.male, c("Mylk3", "Trdn", "Hrc", "Myoz2"), label = T)
+FeaturePlot(xenium.obj.male, c("Tnnc1", "Tnnt2-FSJ1"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Fibroblasts
+```{r}
+FeaturePlot(xenium.obj.male, c("Dpt", "Lum"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Scahwann cells
+```{r}
+FeaturePlot(xenium.obj.male, "Plp1", label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+EC cells - Coronary artery EC cells - using reverse engineering with Tabula Muris expression database
+```{r}
+FeaturePlot(xenium.obj.male, c("Aqp7", "Timp4"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Lymphatic ECs
+```{r}
+FeaturePlot(xenium.obj.male, c("Lyve1"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Erythrocytes & pericytes - reverse engineering
+```{r}
+FeaturePlot(xenium.obj.male, c("Higd1b", "Rsad2"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Endocardial
+```{r}
+FeaturePlot(xenium.obj.male, c("Vwf", "Plvap"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Epicardium
+```{r}
+FeaturePlot(xenium.obj.male, c("Upk3b"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+Macrophages
+```{r}
+FeaturePlot(xenium.obj.male, c("Ctss"), label = T) & scale_color_distiller(name = stringr::str_wrap("Expression Level"), guide = guide_colourbar(title.position = "right")) &
+  theme(legend.position = c(0.9,0.2),legend.title = element_text(angle = 90, size = 8 ,vjust = .1, hjust = .5), plot.background = element_rect(fill = "white")) & scale_colour_gradientn(colours = (brewer.pal(n = 6, name = "YlGnBu")))
+```
+
+
+Rename clusters
+```{r}
+new.cluster.ids.male <- c("Fibroblasts", "ECs", "CMs", "Macrophage", "Fibroblasts", "ECs", "Pericytes", "Macrophage2", "Fibroblasts",
+                          "CMs", "ECs2" ,"Special_cluster", "CMs", "SMCc", "ECs", "CMs", "Lymphatic ECs", "Car3+",
+                          "Erythocytes", "Blood", "Epicardium", "Neural")
+names(new.cluster.ids.male) <- levels(xenium.obj.male)
+xenium.obj.male <- RenameIdents(xenium.obj.male, new.cluster.ids.male)
+```
+
+Remove the ND cluster completely as it is mainly low count cells without any notifying markers
+```{r}
+xenium.obj.male <- subset(xenium.obj.male, idents = "ND", invert = T)
+```
+
+Save the cell ID information to upload in Xenium Explorer
+```{r}
+clusters <- data.frame(names(Idents(xenium.obj.male)), as.vector(Idents(xenium.obj.male)))
+colnames(clusters) <- c("cell_id", "group")
+write.csv(clusters, "../r_objects/celltype_xenium_male_new.csv", quote = F, row.names = F)
+```
+
+<!-- Remove ND from cluster list -->
+<!-- ```{r} -->
+<!-- unique_clusters <- unique(Idents(xenium.obj.male)) -->
+<!-- cluster_names <- unique_clusters[! unique_clusters %in% "ND"] -->
+<!-- Idents(xenium.obj.male) <- factor(Idents(xenium.obj.male), levels = cluster_names) -->
+<!-- ``` -->
+
+## WT versus MI
+Read `cell_IDs_samples_male` object from previous RDS saved data because it takes long time to run this.
+```{r}
+cell_IDs_samples_male <- readRDS("../r_objects/cell_IDs_samples_male.rds")
+```
+
+Assign cellIDs from above co-ordinate information
+```{r}
+xenium.obj.male$condition <- cell_IDs_samples_male$condition[match(rownames(xenium.obj.male@meta.data), cell_IDs_samples_male$cellid)]
+xenium.obj.male$condition <- factor(xenium.obj.male$condition, levels = c("WT", "MI", "ORAB1", "ORAB2")) # rearranging the order
+```
+
+Separate WT and MI objects
+```{r}
+xenium.obj.male_wt <- subset(xenium.obj.male, subset =  `condition` == "WT")
+xenium.obj.male_mi <- subset(xenium.obj.male, subset =  `condition` == "MI")
+xenium.obj.male_orab1 <- subset(xenium.obj.male, subset =  `condition` == "ORAB1")
+xenium.obj.male_orab2 <- subset(xenium.obj.male, subset =  `condition` == "ORAB2")
+```
+
+Find Markers
+```{r}
+markers_wt <- FindAllMarkers(xenium.obj.male_wt)
+write.csv(markers_wt, file = "../r_objects/markers_WT_male.csv", quote = F)
+markers_mi <- FindAllMarkers(xenium.obj.male_mi)
+write.csv(markers_mi, file = "../r_objects/markers_MI_male.csv", quote = F)
+markers_orab1 <- FindAllMarkers(xenium.obj.male_orab1)
+write.csv(markers_orab1, file = "../r_objects/markers_ORAB1_male.csv", quote = F)
+markers_orab2 <- FindAllMarkers(xenium.obj.male_orab2)
+write.csv(markers_orab2, file = "../r_objects/markers_ORAB2_male.csv", quote = F)
+```
+
+Featureplots for WT and MI
+```{r}
+DimPlot(xenium.obj.male_wt) + ggtitle("WT") + theme(legend.position="none") | DimPlot(xenium.obj.male_mi) + ggtitle("MI") 
+```
+
+Add celltype as a variable
+```{r}
+xenium.obj.male$celltype <- Idents(xenium.obj.male)
+```
+
+To highlight musclecontraction cluster spatially (added for presentation SCC-HD)
+```{r}
+index <- which(Idents(xenium.obj.male) == "Special_cluster")
+cells_mc <- names(Idents(xenium.obj.male)[index])
+ImageDimPlot(xenium.obj.male, cells = cells_mc)
+```
+
+Image Dim Plots for each condition
+```{r}
+ImageDimPlot(xenium.obj.male_wt, dark.background = F, size = 1.5)
+ImageDimPlot(xenium.obj.male_mi, dark.background = F, size = 1.5)
+ImageDimPlot(xenium.obj.male_orab1, dark.background = F, size = 1.5)
+ImageDimPlot(xenium.obj.male_orab2, dark.background = F, size = 1.5)
+```
+
+
+# Cell-size statistics
+```{r}
+cells_male_seg <- read.csv(gzfile("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046390__Region_1__20241219__110828//qupath_seg_mod//outs/cells.csv.gz")) 
+cells_male <- read.csv(gzfile("/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046390__Region_1__20241219__110828//cells.csv.gz")) 
+# add 
+```
+
+Make a dataframe of identity of each cell using seurat cluster information
+```{r}
+male_clusters <- as.data.frame(Idents(xenium.obj.male))
+colnames(male_clusters) <- c("celltype")
+male_clusters$cellid <- rownames(male_clusters)
+```
+
+Add cluster information to cells area dataframe (This wont work after changing segmentation (qupath_mod))
+```{r}
+cells_male_seg$celltype <- male_clusters$celltype[match(cells_male_seg$cell_id, male_clusters$cellid)]
+cells_male_seg$condition <- xenium.obj.male@meta.data$condition[match(cells_male_seg$cell_id, rownames(xenium.obj.male@meta.data))]
+rownames(cells_male_seg) <- cells_male_seg$cell_id
+```
+
+Remove cells with NA condition
+```{r}
+cells_male_seg_filtered <- cells_male_seg[! is.na(cells_male_seg$condition),]
+cells_male_seg_filtered <- cells_male_seg_filtered[cells_male_seg_filtered$celltype != "ND",]
+```
+
+Plot the cell-size distribution
+```{r}
+ggplot(cells_male_seg_filtered, aes(x=celltype, y=cell_area, color=condition)) + geom_boxplot() + ylim(0,2000)
+```
+
+Plot cell-size distribution before and after
+```{r}
+a <- data.frame(group = "a", value = cells_male_seg$cell_area)
+b <- data.frame(group = "b", value = cells_male$cell_area)
+plot.data <- rbind(a, b)
+
+plot.data$group <- factor(plot.data$group, levels = c("b", "a"))
+
+# plot
+p <- ggplot(plot.data, aes(x=group, y=value, fill=group)) + scale_fill_viridis_d( option = "D")
+p <- p + geom_violin(alpha=0.4, position = position_dodge(width = .75),size=1,color="black")
+p <- p + geom_boxplot(notch = TRUE,  outlier.size = -1, color="black",lwd=1.2, alpha = 0.7)
+p <- p + theme_bw()
+p <- p + ylim(0,1000) + theme(legend.position = "none")
+p <- p + scale_x_discrete(labels=c("a" = "After", "b" = "Before")) + ylab("Cell area in µm²") + xlab("") + theme(text=element_text(size=16))
+```
+
+# Expression of circular RNAs
+We have 28 circles in our current dataset. (after filtering)
+```{r eval=FALSE}
+all_panel <- Features(xenium.obj.male)
+circles <- all_panel[grepl("*-BSJ*", all_panel)]
+```
+
+For circles for which no expression patterns are present, check if their linear counterparts are expressed or no Also check their % of cells expressing this molecule
+```{r}
+vec_mean_expr_circle <- c()
+vec_mean_expr_linear <- c()
+fig_dict <- "/prj/XeniumProbeDesign/mouse_heart_03012025/figures/"
+for (each_circle in circles){
+  # print(each_circle)
+  gene <- strsplit(each_circle, "-")[[1]][1]
+  all_grep <- Features(xenium.obj.male)[grepl(gene, Features(xenium.obj.male))]
+  each_linear <- all_grep[grepl("FSJ", all_grep)]
+  
+  expr_circle <- xenium.obj.male[["SCT"]]$data[each_circle,]
+  expr_linear <- xenium.obj.male[["SCT"]]$data[each_linear,]
+  
+  percent_cells_expressed_circle <- sum(xenium.obj.male[["SCT"]]$data[each_circle,] > 0)/length(Cells(xenium.obj.male))*100
+  percent_cells_expressed_linear <- sum(xenium.obj.male[["SCT"]]$data[each_linear,] > 0)/length(Cells(xenium.obj.male))*100
+  
+  print(paste(each_circle, each_linear, percent_cells_expressed_circle, percent_cells_expressed_linear, mean(expr_circle), mean(expr_linear), max(expr_circle), max(expr_linear), as.vector(cor.test(expr_circle, expr_linear)$estimate)))
+  
+  vec_mean_expr_circle <- c(vec_mean_expr_circle, mean(expr_circle))
+  vec_mean_expr_linear <- c(vec_mean_expr_linear, mean(expr_linear))
+}
+```
+
+# Niche analysis
+Create a new object with niches
+### WT
+```{r}
+xenium.obj.male_wt_niche <- xenium.obj.male_wt
+xenium.obj.male_wt_niche$celltype <- as.vector(Idents(xenium.obj.male_wt_niche))
+xenium.obj.male_wt_niche <- BuildNicheAssay(object = xenium.obj.male_wt_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+ImageDimPlot(xenium.obj.male_wt_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
+```
+
+Plotting the niche contents - WT
+```{r}
+niche_male_wt <- table(xenium.obj.male_wt_niche$celltype, xenium.obj.male_wt_niche$niches)
+niche_male_wt_melt <- melt(niche_male_wt)
+ggplot(niche_male_wt_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+niche_male_wt_abs <- sweep(niche_male_wt, 2, colSums(niche_male_wt), `/`)
+niche_male_wt_abs_melt <- melt(niche_male_wt_abs)
+ggplot(niche_male_wt_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+```
+
+### MI
+```{r}
+xenium.obj.male_mi_niche <- xenium.obj.male_mi
+xenium.obj.male_mi_niche$celltype <- as.vector(Idents(xenium.obj.male_mi_niche))
+xenium.obj.male_mi_niche <- BuildNicheAssay(object = xenium.obj.male_mi_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+ImageDimPlot(xenium.obj.male_mi_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
+```
+
+Plotting the niche contents - MI
+```{r}
+niche_male_mi <- table(xenium.obj.male_mi_niche$celltype, xenium.obj.male_mi_niche$niches)
+niche_male_mi_melt <- melt(niche_male_mi)
+ggplot(niche_male_mi_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+niche_male_mi_abs <- sweep(niche_male_mi, 2, colSums(niche_male_mi), `/`)
+niche_male_mi_abs_melt <- melt(niche_male_mi_abs)
+ggplot(niche_male_mi_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+```
+
+### ORAB1
+```{r}
+xenium.obj.male_orab1_niche <- xenium.obj.male_orab1
+xenium.obj.male_orab1_niche$celltype <- as.vector(Idents(xenium.obj.male_orab1_niche))
+xenium.obj.male_orab1_niche <- BuildNicheAssay(object = xenium.obj.male_orab1_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+ImageDimPlot(xenium.obj.male_orab1_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
+```
+
+Plotting the niche contents - ORAB1
+```{r}
+niche_male_orab1 <- table(xenium.obj.male_orab1_niche$celltype, xenium.obj.male_orab1_niche$niches)
+niche_male_orab1_melt <- melt(niche_male_orab1)
+ggplot(niche_male_orab1_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+niche_male_orab1_abs <- sweep(niche_male_orab1, 2, colSums(niche_male_orab1), `/`)
+niche_male_orab1_abs_melt <- melt(niche_male_orab1_abs)
+ggplot(niche_male_orab1_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+```
+
+### ORAB2
+```{r}
+xenium.obj.male_orab2_niche <- xenium.obj.male_orab2
+xenium.obj.male_orab2_niche$celltype <- as.vector(Idents(xenium.obj.male_orab2_niche))
+xenium.obj.male_orab2_niche <- BuildNicheAssay(object = xenium.obj.male_orab2_niche, group.by = "celltype", niches.k = 4, neighbors.k = 25, fov = "fov")
+ImageDimPlot(xenium.obj.male_orab2_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) + ggtitle("Niches")
+```
+
+Plotting the niche contents - ORAB2
+```{r}
+niche_male_orab2 <- table(xenium.obj.male_orab2_niche$celltype, xenium.obj.male_orab2_niche$niches)
+niche_male_orab2_melt <- melt(niche_male_orab2)
+ggplot(niche_male_orab2_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+niche_male_orab2_abs <- sweep(niche_male_orab2, 2, colSums(niche_male_orab2), `/`)
+niche_male_orab2_abs_melt <- melt(niche_male_orab2_abs)
+ggplot(niche_male_orab2_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") #+ scale_fill_manual(values = c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'))
+```
+
+Niche spatial plot and distribution plot side-by-side
+```{r}
+# WT
+ImageDimPlot(xenium.obj.male_wt_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) | ggplot(niche_male_wt_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches")
+# MI
+ImageDimPlot(xenium.obj.male_mi_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) | ggplot(niche_male_mi_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches")
+#ORAB1
+ImageDimPlot(xenium.obj.male_orab1_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) | ggplot(niche_male_orab1_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches")
+# ORAB2
+ImageDimPlot(xenium.obj.male_orab2_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) | ggplot(niche_male_orab2_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches")
+```
+
+Abs population changes in ORAB1 and ORBA2 niches
+```{r}
+ggplot(niche_male_orab1_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches") | ggplot(niche_male_orab2_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches")
+```
+
+Abs population changes in ORAB1 and MI niches
+```{r}
+ggplot(niche_male_mi_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches") | ggplot(niche_male_orab1_abs_melt, aes(x=Var2, y=value, fill=Var1)) + geom_bar(stat = "identity", colour = "black") +  theme(text=element_text(size=16)) + ylab("Proportion of cell-types") + xlab("Niches")
+```
+
+MI and ORAB niches ImageDimPlot
+```{r}
+ImageDimPlot(xenium.obj.male_mi_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F) | ImageDimPlot(xenium.obj.male_orab1_niche, group.by = "niches", size = 1.5, dark.background = F, flip_xy = F)
+```
+
+
+Plotting niches are barplots (SCC-HD presentation)
+ 
+Plot the cellular percentages for these two infarction niches as barplots i.e. niche 1 in MI and niche 4 in ORAB1
+```{r}
+niche_bar_mi_orab <- data.frame(niche_male_mi_abs[,"1"], niche_male_orab1_abs[,"4"])
+colnames(niche_bar_mi_orab) <- c("MI", "ORAB1")
+niche_bar_mi_orab$celltype <- rownames(niche_bar_mi_orab)
+niche_bar_mi_orab_melt <- melt(niche_bar_mi_orab)
+
+niche_bar_mi_orab_melt <- niche_bar_mi_orab_melt[niche_bar_mi_orab_melt$celltype!="ND",]
+
+# barplot
+ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_bar(stat = "identity",position = "dodge") + theme_bw() +
+scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
+```
+
+Similarly check for infarction neighbor niche i.e. niche 2 in MI and niche 3 in ORAB1
+```{r}
+niche_bar_mi_orab <- data.frame(niche_male_mi_abs[,"2"], niche_male_orab1_abs[,"3"])
+colnames(niche_bar_mi_orab) <- c("MI", "ORAB1")
+niche_bar_mi_orab$celltype <- rownames(niche_bar_mi_orab)
+niche_bar_mi_orab_melt <- melt(niche_bar_mi_orab)
+
+niche_bar_mi_orab_melt <- niche_bar_mi_orab_melt[niche_bar_mi_orab_melt$celltype!="ND",]
+
+# barplot
+ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_bar(stat = "identity",position = "dodge") + theme_bw() +
+scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
+```
+
+# Cell composition analysis
+From cell annotations, see for each condition the %of cells present
+```{r}
+df_celltype_distribution <- data.frame(rownames(xenium.obj.male@meta.data), xenium.obj.male$celltype, xenium.obj.male$condition)
+colnames(df_celltype_distribution) <- c("cellid", "celltype", "condition")
+df_celltype_distribution_table <- table(df_celltype_distribution$celltype, df_celltype_distribution$condition)
+df_celltype_distribution_table <- df_celltype_distribution_table/colSums(df_celltype_distribution_table)*100
+df_celltype_distribution_table[!(row.names(df_celltype_distribution_table) %in% "ND"), ]
+df_celltype_distribution_table_melt <- melt(df_celltype_distribution_table)
+df_celltype_distribution_table_melt$Var2 <- factor(df_celltype_distribution_table_melt$Var2, 
+                                                   levels = c("WT", "MI", "ORAB1", "ORAB2"))
+```
+
+Plot the cell-type distribution per condition
+```{r}
+ggplot(df_celltype_distribution_table_melt, aes(x=Var1, y=value, fill=Var2)) + geom_bar(stat = "identity", position = "dodge") + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45)) + ylab("Population percentage") + xlab("Cell-types")
+```
+
+# Differential expression analysis per celltype between two conditions
+```{r}
+xenium.obj.male.de <- xenium.obj.male     # create separate Xenium object for 
+output <- "/prj/XeniumProbeDesign/mouse_heart_03012025/r_objects/"
+xenium.obj.male.de$celltype.condition <- paste(Idents(xenium.obj.male.de), xenium.obj.male.de$condition, sep="__")
+Idents(xenium.obj.male.de) <- "celltype.condition"
+
+list_DEs_MI <- list()
+list_DEs_ORAB1 <- list()
+list_DEs_ORAB2 <- list()
+list_DEs_ORAB1_MI <- list()
+list_DEs_ORAB2_MI <- list()
+for (i in as.vector(unique(xenium.obj.male$celltype))){ #or however many clusters you have
+  print(i)
+  if (i == "ND"){
+    next
+  }
+  ident1 <- paste0(i,"__WT")
+  ident2 <- paste0(i,"__MI")
+  ident3 <- paste0(i,"__ORAB1")
+  ident4 <- paste0(i,"__ORAB2")
+  try({
+    condition.diffgenes.mi_wt <- FindMarkers(xenium.obj.male.de, ident.1 = ident2, ident.2=ident1, min.pct=0.25, logfc.threshold=0.25) # condition versus control
+    list_DEs_MI[[i]] <- condition.diffgenes.mi_wt
+  })
+  
+  try({
+    condition.diffgenes.orab1_wt <- FindMarkers(xenium.obj.male.de, ident.1 = ident3, ident.2=ident1, min.pct=0.25, logfc.threshold=0.25) # condition versus control
+    list_DEs_ORAB1[[i]] <- condition.diffgenes.orab1_wt
+  })
+  
+  try({
+    condition.diffgenes.orab2_wt <- FindMarkers(xenium.obj.male.de, ident.1 = ident4, ident.2=ident1, min.pct=0.25, logfc.threshold=0.25) # condition versus control
+    list_DEs_ORAB2[[i]] <- condition.diffgenes.orab2_wt
+  })
+  
+    try({
+    condition.diffgenes.orab1_mi <- FindMarkers(xenium.obj.male.de, ident.1 = ident3, ident.2=ident2, min.pct=0.25, logfc.threshold=0.25) # ORAB versus MI
+    list_DEs_ORAB1_MI[[paste0(i,"_1")]] <- condition.diffgenes.orab1_mi
+  })
+  
+    try({
+    condition.diffgenes.orab2_mi <- FindMarkers(xenium.obj.male.de, ident.1 = ident4, ident.2=ident2, min.pct=0.25, logfc.threshold=0.25) # ORAB versus MI
+    list_DEs_ORAB2_MI[[paste0(i,"_2")]] <- condition.diffgenes.orab2_mi
+  })
+}
+```
+
+Write all DE results into files
+```{r}
+# write CSV
+library(writexl)
+list_DEs_MI <- lapply(list_DEs_MI, function(x) cbind("genes"=rownames(x), x))   # for xls writing add rownames
+write_xlsx(list_DEs_MI, path = paste0(output, "/DE_MI-WT.xlsx"))
+list_DEs_ORAB1 <- lapply(list_DEs_ORAB1, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB1, path = paste0(output, "/DE_ORAB1-WT.xlsx"))
+list_DEs_ORAB2 <- lapply(list_DEs_ORAB2, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB2, path = paste0(output, "/DE_ORAB2-WT.xlsx"))
+list_DEs_ORAB1_MI <- lapply(list_DEs_ORAB1_MI, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB1_MI, path = paste0(output, "/DE_ORAB1-MI.xlsx"))
+list_DEs_ORAB2_MI <- lapply(list_DEs_ORAB2_MI, function(x) cbind("genes"=rownames(x), x))
+write_xlsx(list_DEs_ORAB2_MI, path = paste0(output, "/DE_ORAB2-MI.xlsx"))
+```
+
+# Cell-cycle scoring
+This analysis was unsuccessful because of overlap of S and G2M phase markers with our gene panel. 
+However, found out two overlapping gene candidates for G2M markers in our data and they have spatial patterns as well - Ube2c, Cenpf
+```{r}
+library(gprofiler2)
+mmus_s <- gorth(cc.genes.updated.2019$s.genes, source_organism = "hsapiens", target_organism = "mmusculus")$ortholog_name
+mmus_g2m <- gorth(cc.genes.updated.2019$g2m.genes, source_organism = "hsapiens", target_organism = "mmusculus")$ortholog_name
+xenium.obj.male_wt <- CellCycleScoring(xenium.obj.male_wt, s.features = mmus_s, g2m.features = mmus_g2m, set.ident = TRUE)
+```
+
+# Pathway enrichment per cluster for all conditions `xenium.obj.male`
+```{r}
+library(gprofiler2)
+list_pathways_celltype <- list()
+for (each_ident in unique(Idents(xenium.obj.male))){
+  print(each_ident)
+  if (each_ident == "ND"){
+    next
+  }
+  each_markers <- markers_male[markers_male$cluster == as.character(each_ident),]
+  each_markers <- each_markers[each_markers$p_val_adj < 0.05 & abs(each_markers$avg_log2FC) > 1,]
+  genes_up <- gsub("-FSJ", "", each_markers$gene[each_markers$avg_log2FC > 1])
+  genes_down <- gsub("-FSJ", "", each_markers$gene[each_markers$avg_log2FC < -1])
+  if (length(genes_up) > 0){
+    gostres <- gost(query = genes_up, organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", 
+                                                                                           "REAC", "WP"))
+    list_pathways_celltype[[paste0(each_ident, "__UP")]] <- gostres$result
+  }
+  if (length(genes_down) > 0){
+    gostres <- gost(query = genes_down, organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", 
+                                                                                           "REAC", "WP"))
+    list_pathways_celltype[[paste0(each_ident, "__DOWN")]] <- gostres$result
+  }
+}
+```
+
+Write output to excel
+```{r}
+write_xlsx(list_pathways_celltype, path = paste0(output, "/pathway_enrichmet_clusterlevel_allconditions.xlsx"))
+```
+
+# Pathway enrichment per cluster for differential condition analysis
+```{r}
+list_pathways_celltype_condition <- list()
+for (each_set in names(list_genes_DE_per_condition)){
+  print(each_set)
+  gostres <- gost(query = list_genes_DE_per_condition[[each_set]], organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", "REAC", "WP"))
+  list_pathways_celltype_condition[[each_set]] <- gostres$result
+}
+```
+
+Write output to excel
+```{r}
+write_xlsx(list_pathways_celltype_condition, path = paste0(output, "/pathway_enrichmet_clusterlevel_perconditions.xlsx"))
+```
+
+
+# Cell-type changes in conditions
+For each celltype, check how many up and down genes are regulated in each condition. This will give an idea, how which celltype is most affected with the condition.
+```{r}
+list_genes_DE_per_condition <- list()
+condition_list <- list("MI"=list_DEs_MI, "ORAB1"=list_DEs_ORAB1, "ORAB2"=list_DEs_ORAB2,
+                       "ORAB1_MI"=list_DEs_ORAB1_MI, "ORAB2_MI"=list_DEs_ORAB2_MI)
+celltypes <- as.vector(unique(Idents(xenium.obj.male)))
+for (eachcell in celltypes){
+  if (eachcell == "ND"){
+    next
+  }
+  for (each_condition in names(condition_list)){
+    # adjust cellnames according to condition comparisons
+    
+    if (each_condition == "ORAB1_MI"){
+      data <- condition_list[[each_condition]][[paste0(eachcell, "_1")]]
+    } else if (each_condition == "ORAB2_MI"){
+      data <- condition_list[[each_condition]][[paste0(eachcell, "_2")]]
+    } else {
+      # for these comparisons, muscle contraction DEs do not exist. So skip
+      if (eachcell == "MuscleContraction") {
+        next
+      }
+      data <- condition_list[[each_condition]][[eachcell]]
+    }
+    # print(paste(eachcell, each_condition))
+    data <- data[abs(data$avg_log2FC) > 1 & data$p_val_adj < 0.05, ]
+    up_genes <- data$genes[data$avg_log2FC >= 0]
+    down_genes <- data$genes[data$avg_log2FC < 0]
+    list_genes_DE_per_condition[[paste(eachcell, each_condition, "UP", sep = "__")]] <- up_genes
+    list_genes_DE_per_condition[[paste(eachcell, each_condition, "DOWN", sep = "__")]] <- down_genes
+    print(paste(eachcell, each_condition, length(up_genes), length(down_genes)))
+  }
+}
+```
+
+
+# Clustering of genes based on their expression in individual cell-type
+```{r}
+bulk_male <- as.data.frame(PseudobulkExpression(object = xenium.obj.male, layer = "data")$SCT)
+bulk_male$sum <- rowSums(bulk_male)
+# filter out low expressed genes in all clusters
+bulk_male <- bulk_male[bulk_male$sum >= 5,]
+bulk_male$sum <- NULL
+```
+
+Heatmap
+```{r}
+library(pheatmap)
+pheatmap(log2(bulk_male+1), angle_col = 315, fontsize_row = 7)
+```
