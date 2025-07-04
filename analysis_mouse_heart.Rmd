@@ -448,7 +448,7 @@ ImageDimPlot(xenium.obj.female_mi_niche, group.by = "zones", size = 1.5, dark.ba
 
 
 Plotting niches as barplots (SCC-HD presentation)
- 
+
 Plot the cellular percentages for these two infarction niches as barplots i.e. niche 2 in MI and niche 2 in ORAB1
 ```{r}
 niche_bar_mi_orab <- data.frame(niche_female_mi_abs[,"2"], niche_female_orab1_abs[,"2"])
@@ -460,7 +460,7 @@ niche_bar_mi_orab_melt <- niche_bar_mi_orab_melt[niche_bar_mi_orab_melt$celltype
 
 # barplot
 ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_bar(stat = "identity",position = "dodge") + theme_bw() +
-scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
+  scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
 ```
 
 Similarly check for infarction neighbor border zone i.e. niche 3 in MI and niche 1 in ORAB1
@@ -474,7 +474,7 @@ niche_bar_mi_orab_melt <- niche_bar_mi_orab_melt[niche_bar_mi_orab_melt$celltype
 
 # barplot
 ggplot(niche_bar_mi_orab_melt, aes(x=celltype, y=value, fill=variable)) + geom_bar(stat = "identity",position = "dodge") + theme_bw() +
-scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
+  scale_fill_manual(values = c("MI" = "#d95f02", "ORAB1" = "#7570b3")) + theme(text=element_text(size=16), axis.text.x = element_text(angle = 45))
 ```
 
 ### All conditions combined (for DE analysis per niche in between different conditions)
@@ -488,7 +488,7 @@ xenium.obj.female_niche <- BuildNicheAssay(object = xenium.obj.female_niche, gro
 Combine niches for each cell identified from different conditions SEPARATELY. Because combined information does not look accurate.
 ```{r}
 list_niche_info_per_celltype <- list("wt" = data.frame(cell = rownames(xenium.obj.female_wt_niche@meta.data), zones = xenium.obj.female_wt_niche$zones), "mi" = data.frame(cell = rownames(xenium.obj.female_mi_niche@meta.data), zones = xenium.obj.female_mi_niche$zones), "orab1" = data.frame(cell = rownames(xenium.obj.female_orab1_niche@meta.data), zones = xenium.obj.female_orab1_niche$zones), "orab2" = data.frame(cell = rownames(xenium.obj.female_orab2_niche@meta.data), zones = xenium.obj.female_orab2_niche$zones))
-  
+
 niche_info_per_celltype <- do.call(rbind.data.frame, list_niche_info_per_celltype)
 ```
 
@@ -567,12 +567,12 @@ for (i in as.vector(unique(xenium.obj.female$celltype))){ #or however many clust
     list_DEs_ORAB2[[i]] <- condition.diffgenes.orab2_wt
   })
   
-    try({
+  try({
     condition.diffgenes.orab1_mi <- FindMarkers(xenium.obj.female.de, ident.1 = ident3, ident.2=ident2, min.pct=0.25, logfc.threshold=0.25) # ORAB versus MI
     list_DEs_ORAB1_MI[[paste0(i,"_1")]] <- condition.diffgenes.orab1_mi
   })
   
-    try({
+  try({
     condition.diffgenes.orab2_mi <- FindMarkers(xenium.obj.female.de, ident.1 = ident4, ident.2=ident2, min.pct=0.25, logfc.threshold=0.25) # ORAB versus MI
     list_DEs_ORAB2_MI[[paste0(i,"_2")]] <- condition.diffgenes.orab2_mi
   })
@@ -625,7 +625,7 @@ for (each_ident in unique(Idents(xenium.obj.female))){
   }
   if (length(genes_down) > 0){
     gostres <- gost(query = genes_down, organism = "mmusculus", exclude_iea = T, sources = c("GO:BP", "KEGG", 
-                                                                                           "REAC", "WP"))
+                                                                                             "REAC", "WP"))
     list_pathways_celltype[[paste0(each_ident, "__DOWN")]] <- gostres$result
   }
 }
@@ -727,13 +727,63 @@ write_xlsx(list_de_niches, path = paste0(output, "/niche_DE_genes.xlsx"))
 ```
 
 
+# Trajectory analysis for all conditions
+To see how transition of cardiomyocytes to macrophages occur, perform the trajectory analysis
+
+Function for analysis
+```{r}
+trajectory_analysis <- function(xenium_obj){
+  library(monocle3)
+  library(RColorBrewer)
+  library(Seurat)
+  
+  xenium_obj$celltype <- Idents(xenium_obj)
+  data <- as(as.matrix(xenium_obj@assays$SCT@counts), 'sparseMatrix')
+  cell_metadata <- data.frame(xenium_obj@meta.data)
+  gene_annotation <- data.frame(rownames(data))
+  colnames(gene_annotation) <- "gene_short_name"
+  rownames(gene_annotation) <- gene_annotation$gene_short_name
+  cds <- new_cell_data_set(data,cell_metadata  = cell_metadata,gene_metadata  = gene_annotation)
+  cds <- preprocess_cds(cds, num_dim = 100)
+  cds <- reduce_dimension(cds,preprocess_method = 'PCA',reduction_method = c("UMAP"),cores = 0)
+  cds@int_colData@listData$reducedDims$UMAP <- xenium_obj@reductions$umap@cell.embeddings
+  cds@clusters$UMAP$clusters <- xenium_obj@active.ident
+  cds <- cluster_cells(cds)
+  cds <- learn_graph(cds)
+  cds <- order_cells(cds, reduction_method = "UMAP")
+  
+  return(cds)
+}
+```
+
+Running trajectory function
+```{r}
+cds_wt <- trajectory_analysis(xenium_obj = xenium.obj.female_wt)
+cds_mi <- trajectory_analysis(xenium_obj = xenium.obj.female_mi)
+cds_orab1 <- trajectory_analysis(xenium_obj = xenium.obj.female_orab1)
+```
+
+Plotting trajectory (WT)
+```{r}
+#color by seurat cluster
+plot_cells(cds_wt, label_groups_by_cluster = FALSE, color_cells_by = "celltype")
+#color by monocle cluster
+plot_cells(cds_wt, color_cells_by = "celltype", label_groups_by_cluster=FALSE, 
+           label_leaves=F, label_branch_points=F, group_label_size = 3, trajectory_graph_color = "black")
+plot_cells(cds_wt, color_cells_by = "pseudotime", label_groups_by_cluster=T, 
+           label_leaves=F, label_branch_points=T)
+# Plotting genes in pseudotime
+plot_genes_in_pseudotime(cds_wt["Ankrd1-FSJ2",], color_cells_by="celltype", 
+                              min_expr=0.5, ncol = 2)
+```
+
 # Commented part 
 <!--```{r}
 female <- ReadXenium_new(data.dir = "/prj/XeniumProbeDesign/mouse_heart_03012025/output-XETG00046__0046388__Region_1__20241219__110827/qupath_seg/outs/")
 # saving this R object so that it is easy to load it later
 saveRDS(female, file = "/prj/XeniumProbeDesign/mouse_heart_03012025/r_objects/mouse_female_fourregions.rds")
 ```
- -->
+-->
 <!-- With mouse data, all four regions from four conditions were placed on the same slide. This means, you will have to find out the coordinates for each region and subset the data. This was done using script `separate_regions_slide_female.R` -->
 <!-- ```{r} -->
 <!-- # wild-type cell-id extraction -->
